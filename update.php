@@ -2,16 +2,26 @@
 $pdo = new PDO('mysql:local;port=3306;dbname=products_crud', 'root', '');
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+$id = $_GET['id'] ?? null;
+if (!$id) {
+    header('Location: index.php');
+    exit;
+}
+
+$statement  = $pdo->prepare('SELECT * FROM products WHERE id = :id');
+$statement -> bindValue(':id',$id);
+$statement -> execute();
+$product = $statement->fetch(PDO::FETCH_ASSOC);
+
 $errorS = [];
-$title = '';
-$price = '';
-$description = '';
+$title = $product['title'];
+$price = $product['price'];
+$description = $product['description'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $title = $_POST['title'];
     $description = $_POST['description'];
     $price = $_POST['price'];
-    $date = date('Y-m-d H:i:s');
 
     if (!$title) {
         $errors[] = 'title is required';
@@ -23,20 +33,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         mkdir('images');
     }
     if (empty($errors)) {
-        $imagePath = '';
         $image = $_FILES['image'] ?? null;
+        $imagePath = $product['image'];
+        
+
         if ($image && $image['tmp_name']) {
+
+            if ($product['image']) {
+                unlink($product['image']);
+            }
             $imagePath = 'images/'.randomString(8).'/'.$image['name'];
             mkdir(dirname($imagePath));
             move_uploaded_file($image["tmp_name"], $imagePath);
         }
-        $statement  = $pdo->prepare("INSERT INTO products (title,image,description,price,create_date)
-        VALUES (:title, :image ,:description,:price,:date)");
+        $statement  = $pdo->prepare("UPDATE products SET title = :title,image = :image,description = :description,price = :price WHERE id = :id");
+        $statement->bindValue(':id', $id);
         $statement->bindValue(':title', $title);
         $statement->bindValue(':image', $imagePath);
         $statement->bindValue(':description', $description);
         $statement->bindValue(':price', $price);
-        $statement->bindValue(':date', $date);
         $statement->execute();
         header('Location: index.php');
     }
@@ -60,7 +75,7 @@ function randomString($n)
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
+    <link rel="stylesheet" href="styles.css">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-wEmeIV1mKuiNpC+IOBjI7aAzPcEZeedi5yW5f2yOq55WWLwNGmvvx4Um1vskeMj0" crossorigin="anonymous">
 
@@ -68,7 +83,10 @@ function randomString($n)
 </head>
 
 <body>
-    <h1>CREATE NEW PRODUCT</h1>
+<p>
+<a href="index.php" class="btn btn-secondary">Go back to products</a>
+</p>
+    <h1>UPDATE PRODUCT <p><?php echo $product['title']?></p></h1>
     <?php if (!empty($errors)) : ?>
         <div class="alert alert-danger">
             <?php
@@ -78,6 +96,9 @@ function randomString($n)
         </div>
     <?php endif ?>
     <form action="" method="post" enctype="multipart/form-data">
+    <?php if ($product['image']): ?>
+    <img src="<?php echo $product['image']?>" class="update-image">
+        <?php endif ?>
         <div class="mb-3">
             <label>Product Image</label>
             <input type="file" name="image" class="form-control">
