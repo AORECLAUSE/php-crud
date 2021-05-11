@@ -2,7 +2,15 @@
 $pdo = new PDO('mysql:local;port=3306;dbname=products_crud','root','');
 $pdo -> setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 
+$search = $_GET['search']?? '';
+if($search) {
+    $statement = $pdo ->prepare('SELECT * FROM products WHERE title LIKE :title ORDER BY create_date DESC');
+    $statement -> bindValue(':title' , "%$search%");
+}
+else
+{
 $statement = $pdo ->prepare('SELECT * FROM products ORDER BY create_date DESC');
+}
 $statement ->execute();
 $products = $statement->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -27,7 +35,7 @@ $products = $statement->fetchAll(PDO::FETCH_ASSOC);
     </p>
     <form>
     <div class="input-group mb-3">
-  <input type="text" class="form-control" placeholder="Search for products" name="search">
+  <input type="text" class="form-control" placeholder="Search for products" name="search" value="<?php echo $search ?>" />
   <div class="input-group-append">
   <button class="btn btn-outline-secondary" type="submit" >Search</button>
   </div>
